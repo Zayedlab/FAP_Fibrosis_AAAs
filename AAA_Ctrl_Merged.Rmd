@@ -1,0 +1,1015 @@
+---
+title: "AAA_Ctrl_Merged"
+output: html_document
+date: "2025-07-25"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r settings}
+#this is to make sure we don't run out of RAM when we do the integration later on
+options(future.globals.maxSize = 4000 * 1024^2)
+#set path to figures
+fig<-""
+#set path to files generated
+path1<-""
+#set path to Michigan
+path2<-""
+#set path to TUM
+path3<-""
+#set path to SYSU
+path4<-""
+
+```
+
+```{r Libraries}
+library("here")
+library("stringr")
+library("purrr")
+library("readr")
+library("scCustomize")
+library("Seurat")
+library("ggplot2")
+library("cowplot")
+library("dplyr")
+library("Matrix")
+library("viridis")
+library("harmony")
+library("SeuratWrappers")
+library("tidyverse")
+library("devtools")
+library("ggrepel")
+library("SeuratExtend")
+library("rlang")
+```
+```{r Imports}
+Data_GSM5077728<-Read10X(data.dir = paste0(path2, "GSM5077728_AAA20190524Tissue_filtered_feature_bc_matrix/"))
+Data_GSM5077729<-Read10X(data.dir = paste0(path2, "GSM5077729_AAA20190524TissueNina_filtered_feature_bc_matrix/"))
+Data_GSM5077727<-Read10X(data.dir = paste0(path2, "GSM5077727_AAA20190226Tissue_filtered_feature_bc_matrix/"))
+Data_GSM5077730<-Read10X(data.dir = paste0(path2, "GSM5077730_AAA20190617Tissue_filtered_feature_bc_matrix/"))
+Data_GSM5077731<-Read10X(data.dir = paste0(path2, "GSM5077731_NAA"))
+Data_GSM5077732<-Read10X(data.dir = paste0(path2, "GSM5077732_NAA"))
+Data_GSM7597524<-Read10X(data.dir = paste0(path3, "GSM7597524_MUC14320_AAA1_Rep1"))
+Data_GSM7597525<-Read10X(data.dir = paste0(path3, "GSM7597525_MUC14322_AAA1_Rep2"))
+Data_GSM7597526<-Read10X(data.dir = paste0(path3, "GSM7597526_MUC22896_AAA2_Rep1"))
+Data_GSM7597527<-Read10X(data.dir = paste0(path3, "GSM7597527_MUC22897_AAA2_Rep2"))
+Data_GSM7597528<-Read10X(data.dir = paste0(path3, "GSM7597528_MUC22898_AAA3_Rep1"))
+Data_GSM7597529<-Read10X(data.dir = paste0(path3, "GSM7597529_MUC22899_AAA3_Rep2"))
+Data_GSM7597522<-Read10X(data.dir = paste0(path3, "GSM7597522_22L002257_AAA4_Rep1"))
+Data_GSM7597523<-Read10X(data.dir = paste0(path3, "GSM7597523_22L002258_AAA4_Rep2"))
+Data_GSM7077895<-Read10X(data.dir = paste0(path4, "GSM7077895_SYSU_AAA1"))
+Data_GSM7077896<-Read10X(data.dir = paste0(path4, "GSM7077896_SYSU_AAA2"))
+Data_GSM7077897<-Read10X(data.dir = paste0(path4, "GSM7077897_SYSU_AAA3"))
+Data_GSM7077892<-Read10X(data.dir = paste0(path4, "GSM7077892_SYSU_Ctrl1"))
+Data_GSM7077893<-Read10X(data.dir = paste0(path4, "GSM7077893_SYSU_Ctrl2"))
+Data_GSM7077894<-Read10X(data.dir = paste0(path4, "GSM7077894_SYSU_Ctrl3"))
+```
+
+```{r Dimcounts}
+dim(Data_GSM5077727)# 32738 features and 3100 cells
+dim(Data_GSM5077728)# 32738 features and 2332 cells
+dim(Data_GSM5077729)# 32738 features and 2497 cells
+dim(Data_GSM5077730)# 32738 features and 758 cells
+dim(Data_GSM5077731)# 32738 features and 2209 cell1s
+dim(Data_GSM5077732)# 32738 features and 3192 cells
+dim(Data_GSM7597524)# 60662 features and 414 cells
+dim(Data_GSM7597525)# 60662 features and 437 cells
+dim(Data_GSM7597526)# 60663 features and 562 cells
+dim(Data_GSM7597527)# 60663 features and 1630 cells
+dim(Data_GSM7597528)# 60663 features and 224 cells
+dim(Data_GSM7597529)# 60663 features and 986 cells
+dim(Data_GSM7597522)# 60663 features and 771 cells
+dim(Data_GSM7597523)# 60663 features and 1528 cells
+dim(Data_GSM7077895)# 32738 features and 13424 cells
+dim(Data_GSM7077896)# 32738 features and 7494 cells
+dim(Data_GSM7077897)# 32738 features and 9786 cells
+dim(Data_GSM7077892)# 32738 features and 11039 cells
+dim(Data_GSM7077893)# 32738 features and 15811 cells
+dim(Data_GSM7077894)# 32738 features and 19605 cells
+```
+```{r Disease list}
+Disease.list = list()
+Disease.list[[1]] = CreateSeuratObject(counts = Data_GSM5077728, min.cells = 10,
+                                       project = "GSM5077728")
+Disease.list[[2]] = CreateSeuratObject(counts = Data_GSM5077729, min.cells = 10,
+                                       project = "GSM5077729")
+Disease.list[[3]] = CreateSeuratObject(counts = Data_GSM5077731, min.cells = 10,
+                                       project = "GSM5077731")
+Disease.list[[4]] = CreateSeuratObject(counts = Data_GSM5077732, min.cells = 10,
+                                       project = "GSM5077732")
+Disease.list[[5]] = CreateSeuratObject(counts = Data_GSM5077727, min.cells = 10,
+                                       project = "GSM5077727")
+Disease.list[[6]] = CreateSeuratObject(counts = Data_GSM5077730, min.cells = 10,
+                                       project = "GSM5077730")
+Disease.list[[7]] = CreateSeuratObject(counts = Data_GSM7597524, min.cells = 10,
+                                       project = "GSM7597524_MUC14320_AAA1_Rep1")
+Disease.list[[8]] = CreateSeuratObject(counts = Data_GSM7597525, min.cells = 10,
+                                       project = "GSM7597525_MUC14322_AAA1_Rep2")
+Disease.list[[9]] = CreateSeuratObject(counts = Data_GSM7597526, min.cells = 10,
+                                       project = "GSM7597526_MUC22896_AAA2_Rep1")
+Disease.list[[10]] = CreateSeuratObject(counts = Data_GSM7597527, min.cells = 10,
+                                       project = "GSM7597527_MUC22897_AAA2_Rep2")
+Disease.list[[11]] = CreateSeuratObject(counts = Data_GSM7597528, min.cells = 10,
+                                       project = "GSM7597528_MUC22898_AAA3_Rep1")
+Disease.list[[12]] = CreateSeuratObject(counts = Data_GSM7597529, min.cells = 10,
+                                       project = "GSM7597529_MUC22899_AAA3_Rep2")
+Disease.list[[13]] = CreateSeuratObject(counts = Data_GSM7597522, min.cells = 10,
+                                       project = "GSM7597522_22L002257_AAA4_Rep1")
+Disease.list[[14]] = CreateSeuratObject(counts = Data_GSM7597523, min.cells = 10,
+                                       project = "GSM7597523_22L002258_AAA4_Rep2")
+Disease.list[[15]] = CreateSeuratObject(counts = Data_GSM7077895, min.cells = 10,
+                                       project = "GSM7077895_SYSU_AAA1")
+Disease.list[[16]] = CreateSeuratObject(counts = Data_GSM7077896, min.cells = 10,
+                                       project = "GSM7077896_SYSU_AAA2")
+Disease.list[[17]] = CreateSeuratObject(counts = Data_GSM7077897, min.cells = 10,
+                                       project = "GSM7077897_SYSU_AAA3")
+Disease.list[[18]] = CreateSeuratObject(counts = Data_GSM7077892, min.cells = 10,
+                                       project = "GSM7077892_SYSU_Ctrl1")
+Disease.list[[19]] = CreateSeuratObject(counts = Data_GSM7077893, min.cells = 10,
+                                       project = "GSM7077893_SYSU_Ctrl2")
+Disease.list[[20]] = CreateSeuratObject(counts = Data_GSM7077894, min.cells = 10,
+                                       project = "GSM7077894_SYSU_Ctrl3")
+```
+
+```{r doublets}
+library(scDblFinder)
+library(SingleCellExperiment)
+
+for (i in 1:length(Disease.list)) {
+  
+  sce <- as.SingleCellExperiment(Disease.list[[i]])
+  sce <- scDblFinder(sce)
+  
+  Disease.list[[i]]$scDblFinder.class <- sce$scDblFinder.class
+  Disease.list[[i]]$scDblFinder.score <- sce$scDblFinder.score
+  
+  Disease.list[[i]] <- subset(Disease.list[[i]], scDblFinder.class == "singlet")
+  
+  # show progress
+  message(paste("Finished processing sample", i, "of", length(Disease.list)))
+}
+
+```
+
+
+```{r Disease list merge final object}
+AAA_Ctrl_Merged <- merge(x=Disease.list[[1]], y=c(Disease.list[[2]],Disease.list[[3]],Disease.list[[4]],Disease.list[[5]],Disease.list[[6]],Disease.list[[7]], Disease.list[[8]], Disease.list[[9]], Disease.list[[10]], Disease.list[[11]], Disease.list[[12]], Disease.list[[13]], Disease.list[[14]], Disease.list[[15]], Disease.list[[16]], Disease.list[[17]], Disease.list[[18]], Disease.list[[19]], Disease.list[[20]]), add.cell.ids = c("mAAA_GSM5077728","mAAA_GSM5077729","NAA_GSM5077731", "NAA_GSM5077732","fAAA_GSM5077727", "fAAA_GSM5077730", "AAA1rep1_GSM7597524", "AAA1rep2_GSM7597525", "AAA2rep1_GSM7597526", "AAA2rep2_GSM7597527", "AAA3rep1_GSM7597528", "AAA3rep2_GSM7597529", "AAA4rep1_GSM7597522", "AAA4rep2_GSM7597523", "AAA1_GSM7077895", "AAA2_GSM7077896", "AAA3_GSM7077897", "NAA1_GSM7077892", "NAA2_GSM7077893", "NAA3_GSM7077894"),
+                     project="AAA_Ctrl")
+head(AAA_Ctrl_Merged@meta.data)
+dim(AAA_Ctrl_Merged) # cells 97799
+```
+```{r percent of mt genes}
+AAA_Ctrl_Merged[["percent.mt"]] <- PercentageFeatureSet(object = AAA_Ctrl_Merged, pattern = "^MT-")
+Pcmt_VlnPlot<-VlnPlot(object = AAA_Ctrl_Merged, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+ggsave(Pcmt_VlnPlot,file=paste(fig,"Pcmt_Vlnplot.pdf",sep=""),width=15,height=10)
+Pcmt_VlnPlot
+```
+```{r Filter and QC}
+AAA_Ctrl_Merged<- subset(x =  AAA_Ctrl_Merged, subset = nFeature_RNA > 200 & nFeature_RNA < 5000 & percent.mt < 30)
+dim(AAA_Ctrl_Merged) 
+Qc_ft_VlnPlot<-VlnPlot(object = AAA_Ctrl_Merged, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+ggsave(Qc_ft_VlnPlot,file=paste(fig,"Qcfltd_Vlnplot.pdf",sep=""),width=15,height=10)
+Qc_ft_VlnPlot
+```
+```{r metadata}
+AAA_Ctrl_Merged$sample<-rownames(AAA_Ctrl_Merged@meta.data)
+view(AAA_Ctrl_Merged@meta.data)
+AAA_Ctrl_Merged@meta.data<-separate(AAA_Ctrl_Merged@meta.data,col="sample", into=c('State',"GSM","Barcodes"), sep='_')
+head(AAA_Ctrl_Merged@meta.data)
+class(AAA_Ctrl_Merged@meta.data$GSM)
+```
+#Save object
+```{r}
+saveRDS(AAA_Ctrl_Merged, "AAA_Ctrl_Merged_bfintegration.rds")
+```
+
+```{r readrds}
+AAA_Ctrl_Merged<-readRDS("/storage1/fs1/zayedm/Active/Human_AAAs/R_Markdowns/AAA_Ctrl_Merged_bfintegration.rds")
+```
+
+```{r Log normalization}
+AAA_Ctrl_Merged <- NormalizeData(AAA_Ctrl_Merged, verbose = FALSE)
+AAA_Ctrl_Merged <- FindVariableFeatures(AAA_Ctrl_Merged, selection.method = "vst", nfeatures = 2000)
+head(VariableFeatures(AAA_Ctrl_Merged), 10)
+top10 <- head(VariableFeatures(AAA_Ctrl_Merged), 10)
+plot1 <- VariableFeaturePlot(AAA_Ctrl_Merged)
+plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
+ggsave(plot2,file=paste(fig,"Top10genes_Vftplot.pdf",sep=""),width=10,height=10)
+```
+#Scaling the data
+```{r Scaling data}
+all.genes <- rownames(AAA_Ctrl_Merged)
+AAA_Ctrl_Merged <- ScaleData(AAA_Ctrl_Merged, features = all.genes)
+AAA_Ctrl_Merged <- RunPCA(AAA_Ctrl_Merged, npcs = 12, features = VariableFeatures(object = AAA_Ctrl_Merged))
+```
+#Save object
+```{r}
+saveRDS(AAA_Ctrl_Merged, "AAA_Ctrl_Merged_bfintegration.rds")
+```
+
+```{r readrds}
+AAA_Ctrl_Merged<-readRDS("/storage1/fs1/zayedm/Active/Human_AAAs/R_Markdowns/AAA_Ctrl_Merged_bfintegration.rds")
+```
+
+```{r Clustering reductions}
+AAA_Ctrl_Merged <- RunUMAP(AAA_Ctrl_Merged, reduction = "pca", dims = 1:12,seed.use = 42)
+AAA_Ctrl_Merged <- RunTSNE(AAA_Ctrl_Merged, reduction = "pca", dims = 1:12)
+```
+
+```{r reorginize oirg.ident forcing}
+AAA_Ctrl_Merged$State <-factor(AAA_Ctrl_Merged$State, levels = c ("NAA", "mAAA", "fAAA", "NAA1", "NAA2", "NAA3", "AAA1", "AAA2", "AAA3", "AAA1rep1", "AAA1rep2", "AAA2rep1", "AAA2rep2", "AAA3rep1", "AAA3rep2", "AAA4rep1", "AAA4rep2"))
+```
+
+#Before integration
+
+```{r Dimplot Umap}
+Umap_grpby_GSM<-DimPlot2(AAA_Ctrl_Merged, reduction = 'umap', group.by = 'GSM')
+ggsave(Umap_grpby_GSM,file=paste(fig,"Umap_groupbyGSM.pdf",sep=""),width=12,height=10)
+Umap_spltby_GSM<-DimPlot2(AAA_Ctrl_Merged, reduction = 'umap', group.by = 'GSM', split.by = 'GSM')
+ggsave(Umap_spltby_GSM,file=paste(fig,"Umap_splitbyGSM.pdf",sep=""),width=16,height=10)
+Umap_spltby_State<-DimPlot2(AAA_Ctrl_Merged, reduction = 'umap', group.by = 'GSM', split.by = 'State')
+ggsave(Umap_spltby_State,file=paste(fig,"Umap_splitbystate.pdf",sep=""),width=12,height=10)
+```
+
+
+#Sex differentiation based on DDX3Y and XIST expression
+```{r VlnPlot}
+Vln_DDX3Y<-VlnPlot(AAA_Ctrl_Merged, features = c("DDX3Y"), group.by = "GSM", log = T, layer = "counts")
+Vln_DDX3Y_State<-VlnPlot(AAA_Ctrl_Merged, features = c("DDX3Y"), group.by = "State",
+        layer = "counts", log = T)
+Vln_XIST<-VlnPlot(AAA_Ctrl_Merged, features = c("XIST"), group.by = "GSM", log = T)
+Vln_XIST_State<-VlnPlot(AAA_Ctrl_Merged, features = c("XIST"), group.by = "State",
+        layer = "counts", log = T)
+ggsave(Vln_DDX3Y,file=paste(fig,"Vln_DDX3Y.pdf",sep=""),width=14,height=5)
+ggsave(Vln_DDX3Y_State,file=paste(fig,"Vln_DDX3Y_State.pdf",sep=""),width=20,height=8)
+ggsave(Vln_XIST,file=paste(fig,"Vln_XIST.pdf",sep=""),width=14,height=5)
+ggsave(Vln_XIST_State,file=paste(fig,"Vln_XIST_State.pdf",sep=""),width=20,height=8)
+```
+
+
+```{r Integration}
+AAA_Ctrl_Merged<- IntegrateLayers(AAA_Ctrl_Merged, method = FastMNNIntegration, orig.reduction = "pca", new.reduction = "integrated.mnn", verbose = FALSE)
+```
+```{r Find clusters}
+AAA_Ctrl_Merged <- FindNeighbors(AAA_Ctrl_Merged, reduction = "pca", dims = 1:12)
+AAA_Ctrl_Merged <- FindClusters(AAA_Ctrl_Merged, resolution = c(0.1, 0.3, 0.5), verbose = FALSE)
+```
+
+```{r Visualization}
+Dim1<-DimPlot(AAA_Ctrl_Merged, reduction = 'umap', label = T, group.by = "RNA_snn_res.0.1")
+Dim2<-DimPlot(AAA_Ctrl_Merged, reduction = 'umap', split.by = 'State')
+ggsave(Dim1,file=paste(fig,"Umap_1.pdf",sep=""),width=10,height=10)
+ggsave(Dim2,file=paste(fig,"Umap_2.pdf",sep=""),width=10,height=10)
+Dim3<-DimPlot(AAA_Ctrl_Merged, reduction = 'tsne', label = T)
+Dim4<-DimPlot(Disease_AAA_NAA, reduction = 'tsne', split.by = 'State')
+Dim5<-DimPlot2(AAA_Ctrl_Merged, group.by = "cell.type", split.by = "class")
+```
+
+
+
+```{r}
+fun <- function(x) {
+  if (x == "mAAA") {"mAAA"} 
+  else if (x == "NAA") {"NAA"}
+  else if (x == "fAAA") {"fAAA"}
+  else if (x == "AAA1rep1") {"mAAA"}
+  else if (x == "AAA1rep2") {"mAAA"}
+  else if (x == "AAA2rep1") {"mAAA"}
+  else if (x == "AAA2rep2") {"mAAA"}
+  else if (x == "AAA3rep1") {"mAAA"}
+  else if (x == "AAA3rep2") {"mAAA"}
+  else if (x == "AAA4rep1") {"mAAA"}
+  else if (x == "AAA4rep2") {"mAAA"}
+  else if (x == "AAA1") {"mAAA"}
+  else if (x == "AAA2") {"fAAA"}
+  else if (x == "AAA3") {"fAAA"}
+  else if (x == "NAA1") {"NAA"}
+  else if (x == "NAA2") {"NAA"}
+  else if (x == "NAA3") {"NAA"}
+}
+AAA_Ctrl_Merged$class <- mapply(fun, AAA_Ctrl_Merged$State)
+```
+
+```{r reorginize oirg.ident forcing}
+AAA_Ctrl_Merged$class <-factor(AAA_Ctrl_Merged$class, levels = c("NAA", "mAAA", "fAAA"))
+```
+
+```{r}
+fun <- function(x) {
+  if (x == "mAAA") {"mAAA"} 
+  else if (x == "NAA") {"NAA"}
+  else if (x == "fAAA") {"fAAA"}
+  else if (x == "AAA1rep1") {"mAAA"}
+  else if (x == "AAA1rep2") {"mAAA"}
+  else if (x == "AAA2rep1") {"mAAA"}
+  else if (x == "AAA2rep2") {"mAAA"}
+  else if (x == "AAA3rep1") {"mAAA"}
+  else if (x == "AAA3rep2") {"mAAA"}
+  else if (x == "AAA4rep1") {"mAAA"}
+  else if (x == "AAA4rep2") {"mAAA"}
+  else if (x == "AAA1") {"mAAA"}
+  else if (x == "AAA2") {"fAAA"}
+  else if (x == "AAA3") {"fAAA"}
+  else if (x == "NAA1") {"NAA"}
+  else if (x == "NAA2") {"NAA"}
+  else if (x == "NAA3") {"NAA"}
+}
+AAA_Ctrl_Merged$class <- mapply(fun, AAA_Ctrl_Merged$State)
+```
+
+```{r Findmarkers}
+Allmarkers <- FindAllMarkers(object = AAA_Ctrl_Merged, group.by = "RNA_snn_res.0.1", only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+write.csv(Allmarkers, file = paste0(path1,"Allmarkers.csv"))
+```
+
+```{r Variable features}
+# Calculating z-scores for variable features
+genes.zscore <- CalcStats(AAA_Ctrl_Merged,
+  features = VariableFeatures(AAA_Ctrl_Merged),
+  group.by = "RNA_snn_res.0.1",
+  order = "p",
+  n = 5)
+  
+# Displaying heatmap
+Heatmap<-Heatmap(genes.zscore, lab_fill = "zscore")
+ggsave(Heatmap,file=paste(fig,"Heatmap.pdf"),width =10,height = 8)
+```
+
+
+```{r Dotplot markers}
+grouped_features<- list("Neutrophils" = c("S100A8", "S100A9", "IL1R2"), "VSMCs" = c("ACTA2", "MYH11", "CNN1"), "Macrophages" = c("CD14", "CD68"), "T_cells" = c("IL7R", "CD3D", "CD3E"), "B_cells" = c ("CD37", "CD79A", "BANK1"), "NK_Cells" = c("NKG7", "GZMA"), "DCs" = c("CD74", "PAK1"), "Plasma_cells" = c("IGJ", "PRDM1"), "Fibroblasts" = c("COL1A1","COL1A2", "PDGFRA", "COL3A1", "FBLN1", "FAP"), "ECs" = c("LDB2", "VWF", "ECSCR"))
+Dotplot_markers<-DotPlot2(AAA_Ctrl_Merged, features = grouped_features, group.by = "RNA_snn_res.0.1")
+ggsave(Dotplot_markers,file=paste(fig,"Dotplot_markers.pdf"),width =12,height = 10)
+```
+
+# Anntotate the Global Clusters
+```{r}
+fun <- function(x) {
+  if (x == "0") {"VSMCs"} 
+  else if (x == "1") {"Macrophages"}
+  else if (x == "2") {"T_cells"}
+  else if (x == "3") {"B_cells"}
+  else if (x == "4") {"Endothelial_cells"}
+  else if (x == "5") {"Fibroblasts"}
+  else if (x == "6") {"Epithelial"}
+  else if (x == "7") {"Plasma_cells"}
+  else if (x == "8") {"Neutrophils"}
+}
+AAA_Ctrl_Merged$cell.type <- mapply(fun, AAA_Ctrl_Merged$RNA_snn_res.0.1)
+```
+
+```{r Dimplot}
+Distribution_normalized_reversed<-ClusterDistrBar(AAA_Ctrl_Merged$class, AAA_Ctrl_Merged$cell.type, cols = c("grey", "royalblue4", "maroon"), border = "black", normalize = TRUE, rev = TRUE)+ theme(axis.title.x = element_blank())
+ggsave(Distribution_normalized_reversed,file=paste(fig,"Distribution_normalized_reversed_Wahidi.png"),width =5,height = 3)
+```
+
+#Save object
+```{r}
+saveRDS(AAA_Ctrl_Merged, "AAA_Ctrl_Merged.rds")
+```
+
+```{r readrds}
+AAA_Ctrl_Merged<-readRDS("/storage1/fs1/zayedm/Active/Human_AAAs/R_Markdowns/AAA_Ctrl_Merged.rds")
+```
+
+#Substet clusters to immune cells only
+
+```{r subset for AAAs}
+AAAsOnly<- subset(AAA_Ctrl_Merged, subset = class %in% c("mAAA", "fAAA"))
+saveRDS(AAAsOnly, "AAAsOnly.rds")
+```
+
+```{r subset for AAAs}
+NAA<- subset(AAA_Ctrl_Merged, subset = class %in% c("NAA"))
+saveRDS(NAA, "NAA.rds")
+```
+
+#Subset to get rid of epithelial cells and merge VSMC and Fibroblasts
+
+```{r subset for AAAs}
+AAA_Ctrl_Merged<- subset(AAA_Ctrl_Merged, subset = cell.type %in% c("VSMCs", "Macrophages", "T_cells", "B_cells", "Endothelial_cells", "Fibroblasts", "Plasma_cells", "Neutrophils"))
+```
+
+```{r Visualization}
+UMAP_splitclass<-DimPlot2(AAA_Ctrl_Merged, split.by = "class", group.by = "RNA_snn_res.0.1")
+UMAP_splitclass_celltype<-DimPlot2(AAA_Ctrl_Merged, group.by = "cell.type", split.by = "class")
+UMAP_gb_celltype<-DimPlot2(AAA_Ctrl_Merged, group.by = "cell.type", pt.size = 0.01, theme = NoAxes()) + theme_umap_arrows()
+ggsave(UMAP_gb_celltype,file=paste(fig,"UMAP_gb_celltype.pdf"),width =6,height = 4)
+UMAP_split_class<-DimPlot2(AAA_Ctrl_Merged, group.by = "cell.type", split.by = "class", pt.size = 0.01) 
+ggsave(UMAP_split_class,file=paste(fig,"UMAP_split_class.pdf"),width =15,height = 5)
+
+UMAP_everything<-DimPlot2(AAA_Ctrl_Merged, features = c("cell.type", "class", "ACTA2", "PDGFRA", "MMP2", "CCL2"))
+UMAP_FAP<-DimPlot2(AAA_Ctrl_Merged, features = "FAP", split.by = "class")
+UMAP_CCR2<-DimPlot2(AAA_Ctrl_Merged, features = "CCR2", split.by = "class")
+UMAP_CCL2<-DimPlot2(AAA_Ctrl_Merged, features = "CCL2", split.by = "class")
+ggsave(UMAP_splitclass,file=paste(fig,"UMAP_splitclass.png"),width =12,height = 6)
+ggsave(UMAP_splitclass_celltype,file=paste(fig,"UMAP_splitclass_celltype.png"),width =16,height = 6)
+ggsave(UMAP_gb_celltype,file=paste(fig,"UMAP_gb_celltype.png"),width =8,height = 6)
+```
+
+```{r reorginize oirg.ident forcing}
+AAA_Ctrl_Merged$class <-factor(AAA_Ctrl_Merged$class, levels = c("NAA", "mAAA", "fAAA"))
+```
+
+```{r reorginize oirg.ident forcing}
+AAA_Ctrl_Merged$cell.type <-factor(AAA_Ctrl_Merged$cell.type, levels = c("VSMCs", "Fibroblasts", "Endothelial_cells", "Macrophages", "Neutrophils", "T_cells", "B_cells", "Plasma_cells"))
+```
+
+```{r Dotplot markers}
+grouped_features<- list("VSMCs" = c("ACTA2", "MYH11", "CNN1"), "Fibroblasts" = c("COL1A1","COL1A2", "PDGFRA", "COL3A1", "FBLN1", "FAP"), "ECs" = c("LDB2", "VWF", "ECSCR"), "Macrophages" = c("CD14", "CD68"), "Neutrophils" = c("S100A8", "S100A9", "IL1R2"), "T_cells" = c("IL7R", "CD3D", "CD3E"), "B_cells" = c ("CD37", "CD79A", "BANK1"), "Plasma_cells" = c("IGJ", "PRDM1"))
+Dotplot_markers<-DotPlot2(AAA_Ctrl_Merged, features = grouped_features, group.by = "cell.type", flip = TRUE)
+ggsave(Dotplot_markers,file=paste(fig,"Dotplot_markers.png"),width =9,height = 4)
+```
+
+
+```{r Dotplot markers}
+fibrosis_features<- list("VSMCs" = c("ACTA2", "MYH11"), "Fibroblasts" = c("PDGFRA", "FBLN1"), "Fibrosis" = c("FAP", "COL1A1", "COL1A2", "VIM"))
+Fibrosis_markers<-DotPlot2(AAA_Ctrl_Merged, features = fibrosis_features, group.by = "cell.type", flip = TRUE)
+ggsave(Fibrosis_markers,file=paste(fig,"Fibrosis_markers.pdf"),width =7,height = 3)
+```
+
+```{r Distribution}
+Distribution_normalized_reversed<-ClusterDistrBar(AAA_Ctrl_Merged$class, AAA_Ctrl_Merged$cell.type, cols = c("#D3D0CB", "deepskyblue4", "maroon"), border = "black", normalize = TRUE, rev = TRUE)+ theme(axis.title.x = element_blank())
+ggsave(Distribution_normalized_reversed,file=paste(fig,"Distribution_normalized_reversed.pdf"),width =5.5,height = 3)
+```
+
+#Save object
+```{r}
+saveRDS(AAA_Ctrl_Merged, "AAA_Ctrl_Merged2.rds")
+```
+
+```{r readrds}
+AAA_Ctrl_Merged<-readRDS("/storage1/fs1/zayedm/Active/Human_AAAs/R_Markdowns/AAA_Ctrl_Merged2.rds")
+```
+
+```{r Visualization}
+UMAP_splitclass<-DimPlot2(AAA_Ctrl_Merged, split.by = "class", group.by = "RNA_snn_res.0.1")
+UMAP_splitclass_celltype<-DimPlot2(AAA_Ctrl_Merged, group.by = "cell.type", split.by = "class")
+UMAP_gb_celltype<-DimPlot2(AAA_Ctrl_Merged, group.by = "cell.type", pt.size = 0.05)
+ggsave(UMAP_splitclass,file=paste(fig,"UMAP_splitclass.png"),width =12,height = 6)
+ggsave(UMAP_splitclass_celltype,file=paste(fig,"UMAP_splitclass_celltype.png"),width =16,height = 6)
+ggsave(UMAP_gb_celltype,file=paste(fig,"UMAP_gb_celltype.png"),width =8,height = 6)
+Fibrosis_cells<- colnames(AAA_Ctrl_Merged)[AAA_Ctrl_Merged$cell.type = c("VSMCs", "Fibroblasts")]
+UMAP_selected<-DimPlot2(AAA_Ctrl_Merged, cells.highlight = Fibrosis_cells,, pt.size = 0.05)
+ggsave(UMAP_selected,file=paste(fig,"UUMAP_selected.pdf"),width =8,height = 6)
+```
+
+
+```{r Distribution}
+Distribution_normalized_reversed<-ClusterDistrBar(AAA_Ctrl_Merged$class, AAA_Ctrl_Merged$cell.type, cols = c("#F8FAFD", "#658EA9", "#E66354"), border = "black", normalize = TRUE, rev = TRUE)+ theme(axis.title.x = element_blank())
+ggsave(Distribution_normalized_reversed,file=paste(fig,"Distribution_normalized_reversed.png"),width =6,height = 5)
+```
+
+
+```{r Featureplot}
+Featureplot_fibrosis<-FeaturePlot3(AAA_Ctrl_Merged, color = "ryb", feature.1 = "FAP", feature.2 = "COL1A1", pt.size = 0.1)
+Featureplot_FAP<-FeaturePlot3(AAA_Ctrl_Merged, feature.1 = "FAP")
+Featureplot_VIM<-FeaturePlot3(AAA_Ctrl_Merged, feature.2 = "VIM")
+Featureplot_COL<-FeaturePlot3(AAA_Ctrl_Merged, feature.3 = "COL1A1")
+ggsave(Featureplot_FAP,file=paste(fig,"Featureplot_FAP.png"),width =5,height = 5)
+ggsave(Featureplot_VIM,file=paste(fig,"Featureplot_VIM.png"),width =5,height = 5)
+ggsave(Featureplot_COL,file=paste(fig,"Featureplot_COL.png"),width =5,height = 5)
+```
+
+```{r Feature plots}
+dim(AAA_Ctrl_Merged) # cells 87661 and 25734 features?
+Feature_VSMC<- FeaturePlot3(AAA_Ctrl_Merged, feature.1 = "ACTA2", feature.3 = "MYH11", pt.size = 0.1)
+ggsave(Feature_VSMC,file=paste(fig,"Feature_VSMC.pdf"),width =5,height = 4)
+Feature_fibro<- FeaturePlot3(AAA_Ctrl_Merged, feature.1 = "PDGFRA", feature.3 = "FBLN1", pt.size = 0.1)
+ggsave(Feature_fibro,file=paste(fig,"Feature_fibro.pdf"),width =5,height = 4)
+```
+
+
+```{r Dotplot markers}
+Fibrosis_features<- list("FAP", "VIM", "COL1A1", "COL1A2")
+Fibroblasts_VSMCs_ECs_object<- subset(AAA_Ctrl_Merged, subset = cell.type %in% c("Fibroblasts", "VSMCs", "Endothelial_cells"))
+Dotplot_markers_fibrosis<-DotPlot2(Fibroblasts_VSMCs_ECs_object, features = Fibrosis_features, group.by = "cell.type")
+ggsave(Dotplot_markers_fibrosis,file=paste(fig,"Dotplot_markers_fibrosis.pdf"),width =8,height = 3)
+```
+
+
+#Fibroblast subset analysis
+```{r featureplot}
+Fibroblasts_object<- subset(AAA_Ctrl_Merged, subset = cell.type == "Fibroblasts")
+FAP_Fibroblasts_Vlnplot_State<-VlnPlot2(Fibroblasts_object, features = "FAP", group.by = "class", show.mean = TRUE, mean_colors = c("black"), stat.method = "wilcox.test", p.adjust.method = "bonferroni", label = "p.signif", pt.size = 0.1, cols = c("#F8FAFD", "#658EA9", "#E66354"))
+ggsave(FAP_Fibroblasts_Vlnplot_State,file=paste(fig,"FAP_Fibroblasts_Vlnplot_State.png",sep=""),width=4,height=4)
+```
+
+```{r differentially ab.Fibroblasts}
+AAA_Ctrl_Merged$cell.type.class <- paste(AAA_Ctrl_Merged$cell.type, AAA_Ctrl_Merged$class, sep = "_")
+Idents(AAA_Ctrl_Merged) <- "cell.type.class"
+Fibroblasts.de <- FindMarkers(AAA_Ctrl_Merged, ident.1 = "Fibroblasts_NAA", ident.2 = "Fibroblasts_fAAA", verbose = FALSE)
+write.csv(Fibroblasts.de, file = paste0(path1,"Fibroblasts_NAAvsfAAA.csv"))
+```
+
+```{r featureplot}
+VIM_Fibroblasts_Vlnplot_State<-VlnPlot2(Fibroblasts_object, features = "VIM", group.by = "class", show.mean = TRUE, mean_colors = c("black"), stat.method = "wilcox.test", p.adjust.method = "bonferroni", label = "p.signif", pt.size = 0.1, cols = c("#F8FAFD", "#658EA9", "#E66354"))
+ggsave(VIM_Fibroblasts_Vlnplot_State,file=paste(fig,"VIM_Fibroblasts_Vlnplot_State.png",sep=""),width=4,height=4)
+```
+
+```{r featureplot}
+COL1A2_Fibroblasts_Vlnplot_State<-VlnPlot2(Fibroblasts_object, features = "COL1A2", group.by = "class", show.mean = TRUE, mean_colors = c("black"), stat.method = "wilcox.test", p.adjust.method = "bonferroni", label = "p.signif", pt.size = 0.1, cols = c("#F8FAFD", "#658EA9", "#E66354"))
+ggsave(COL1A2_Fibroblasts_Vlnplot_State,file=paste(fig,"COL1A2_Fibroblasts_Vlnplot_State.png",sep=""),width=4,height=4)
+```
+
+```{r featureplot}
+COL1A1_Fibroblasts_Vlnplot_State<-VlnPlot2(Fibroblasts_object, features = "COL1A1", group.by = "class", show.mean = TRUE, mean_colors = c("black"), stat.method = "wilcox.test", p.adjust.method = "bonferroni", label = "p.signif", pt.size = 0.1, cols = c("#F8FAFD", "#658EA9", "#E66354"))
+ggsave(COL1A1_Fibroblasts_Vlnplot_State,file=paste(fig,"COL1A1_Fibroblasts_Vlnplot_State.png",sep=""),width=4,height=4)
+
+```
+
+#VSMCs subset analysis
+```{r featureplot}
+VSMCs_object<- subset(AAA_Ctrl_Merged, subset = cell.type == "VSMCs")
+FAP_VSMCs_Vlnplot_State<-VlnPlot2(VSMCs_object, features = "FAP", group.by = "class", show.mean = TRUE, mean_colors = c("black"), stat.method = "wilcox.test", p.adjust.method = "bonferroni", label = "p.signif", pt.size = 0.1, cols = c("#F8FAFD", "#658EA9", "#E66354"))
+ggsave(FAP_VSMCs_Vlnplot_State,file=paste(fig,"FAP_VSMCs_Vlnplot_State.png",sep=""),width=4,height=4)
+```
+
+```{r featureplot}
+VIM_VSMCs_Vlnplot_State<-VlnPlot2(VSMCs_object, features = "VIM", group.by = "class", show.mean = TRUE, mean_colors = c("black"), stat.method = "wilcox.test", p.adjust.method = "bonferroni", label = "p.signif", pt.size = 0.1, cols = c("#F8FAFD", "#658EA9", "#E66354"))
+ggsave(VIM_VSMCs_Vlnplot_State,file=paste(fig,"VIM_VSMCs_Vlnplot_State.png",sep=""),width=4,height=4)
+```
+
+```{r featureplot}
+COL1A2_VSMCs_Vlnplot_State<-VlnPlot2(VSMCs_object, features = "COL1A2", group.by = "class", show.mean = TRUE, mean_colors = c("black"), stat.method = "wilcox.test", p.adjust.method = "bonferroni", label = "p.signif", pt.size = 0.1, cols = c("#F8FAFD", "#658EA9", "#E66354"))
+ggsave(COL1A2_VSMCs_Vlnplot_State,file=paste(fig,"COL1A2_VSMCs_Vlnplot_State.png",sep=""),width=4,height=4)
+```
+
+```{r featureplot}
+COL1A1_VSMCs_Vlnplot_State<-VlnPlot2(VSMCs_object, features = "COL1A1", group.by = "class", show.mean = TRUE, mean_colors = c("black"), stat.method = "wilcox.test", p.adjust.method = "bonferroni", label = "p.signif", pt.size = 0.1, cols = c("#F8FAFD", "#658EA9", "#E66354"))
+ggsave(COL1A1_VSMCs_Vlnplot_State,file=paste(fig,"COL1A1_VSMCs_Vlnplot_State.png",sep=""),width=4,height=4)
+```
+
+```{r featureplot}
+ACTA2_VSMCs_Vlnplot_State<-VlnPlot2(VSMCs_object, features = "ACTA2", group.by = "class", show.mean = TRUE, stat.method = "wilcox.test", p.adjust.method = "holm", label = "p.adj")
+ggsave(ACTA2_VSMCs_Vlnplot_State,file=paste(fig,"ACTA2_VSMCs_Vlnplot_State.png",sep=""),width=4,height=4)
+
+```
+
+```{r featureplot}
+FAP_Vlnplot_Class<-VlnPlot2(Fibroblasts_VSMCs_ECs_object, features = "FAP", group.by = "cell.type", show.mean = TRUE, stat.method = "wilcox.test", p.adjust.method = "bonferroni", label = "p.signif",  pt.size = 0.1)
+ggsave(FAP_Vlnplot_Class,file=paste(fig,"FAP_Vlnplot_Class.png",sep=""),width=5,height=5)
+```
+
+```{r Featureplot}
+NAA_object<- subset(AAA_Ctrl_Merged, subset = class == "NAA")
+Featureplot_FAP_ACTA<-FeaturePlot3(NAA_object, color = "ryb", feature.1 = "FAP", feature.2 = "ACTA2", pt.size = 0.1)
+ggsave(Featureplot_FAP_ACTA,file=paste(fig,"Featureplot_FAP_ACTA.png"),width =5,height = 5)
+```
+
+```{r Featureplot}
+mAAA_object<- subset(AAA_Ctrl_Merged, subset = class == "mAAA")
+Featureplot_FAP_ACTA_mAAA<-FeaturePlot3(mAAA_object, color = "ryb", feature.1 = "FAP", feature.2 = "ACTA2", pt.size = 0.1)
+ggsave(Featureplot_FAP_ACTA_mAAA,file=paste(fig,"Featureplot_FAP_ACTA_mAAA.png"),width =5,height = 5)
+```
+
+```{r Featureplot}
+fAAA_object<- subset(AAA_Ctrl_Merged, subset = class == "fAAA")
+Featureplot_FAP_ACTA_fAAA<-FeaturePlot3(fAAA_object, color = "ryb", feature.1 = "FAP", feature.2 = "ACTA2", pt.size = 0.1)
+ggsave(Featureplot_FAP_ACTA_fAAA,file=paste(fig,"Featureplot_FAP_ACTA_fAAA.png"),width =5,height = 5)
+```
+
+##Fibroblast and VSMCs merged object analysis
+
+```{r featureplot}
+Fibroblasts_VSMCs_object<- subset(AAA_Ctrl_Merged, subset = cell.type %in% c("Fibroblasts", "VSMCs"))
+FAP_FibroVSMCs_Vlnplot_State<-VlnPlot2(Fibroblasts_VSMCs_object, features = "FAP", group.by = "class", show.mean = TRUE, mean_colors = c("black"), stat.method = "wilcox.test", p.adjust.method = "bonferroni", label = "p.signif", pt.size = 0.02, cols = c("#D3D0CB", "deepskyblue4", "maroon"))
+ggsave(FAP_FibroVSMCs_Vlnplot_State,file=paste(fig,"FAP_FibroVSMCs_Vlnplot_State.pdf",sep=""),width=4,height=4)
+FAPpub_FibroVSMCs_Vlnplot_State<-VlnPlot2(Fibroblasts_VSMCs_object, features = "FAP", group.by = "class", show.mean = TRUE, mean_colors = c("black"), pt.size = 0.005, cols = c("#D3D0CB", "deepskyblue4", "maroon"))
+ggsave(FAPpub_FibroVSMCs_Vlnplot_State,file=paste(fig,"FAPpub_FibroVSMCs_Vlnplot_State.pdf",sep=""),width=3.7,height=3.5)
+```
+
+```{r featureplot}
+VIM_FibroVSMCs_Vlnplot_State<-VlnPlot2(Fibroblasts_VSMCs_object, features = "VIM", group.by = "class", show.mean = TRUE, mean_colors = c("black"), stat.method = "wilcox.test", p.adjust.method = "bonferroni", label = "p.signif", pt.size = 0.02, cols = c("#D3D0CB", "deepskyblue4", "maroon"))
+ggsave(VIM_FibroVSMCs_Vlnplot_State,file=paste(fig,"VIM_FibroVSMCs_Vlnplot_State.pdf",sep=""),width=4,height=4)
+ VIMpub_FibroVSMCs_Vlnplot_State<-VlnPlot2(Fibroblasts_VSMCs_object, features = "VIM", group.by = "class", show.mean = TRUE, mean_colors = c("black"), pt.size = 0.005, cols = c("#D3D0CB", "deepskyblue4", "maroon"))
+ ggsave(VIMpub_FibroVSMCs_Vlnplot_State,file=paste(fig,"VIMpub_FibroVSMCs_Vlnplot_State.pdf",sep=""),width=3.7,height=3.5)
+```
+
+```{r featureplot}
+COL1A2_FibroVSMCs_Vlnplot_State<-VlnPlot2(Fibroblasts_VSMCs_object, features = "COL1A2", group.by = "class", show.mean = TRUE, mean_colors = c("black"), stat.method = "wilcox.test", p.adjust.method = "bonferroni", label = "p.signif", pt.size = 0.02, cols = c("#D3D0CB", "deepskyblue4", "maroon"))
+ggsave(COL1A2_FibroVSMCs_Vlnplot_State,file=paste(fig,"COL1A2_FibroVSMCs_Vlnplot_State.pdf",sep=""),width=4,height=4)
+ COL1A2pub_FibroVSMCs_Vlnplot_State<-VlnPlot2(Fibroblasts_VSMCs_object, features = "COL1A2", group.by = "class", show.mean = TRUE, mean_colors = c("black"), pt.size = 0.005, cols = c("#D3D0CB", "deepskyblue4", "maroon"))
+ ggsave(COL1A2pub_FibroVSMCs_Vlnplot_State,file=paste(fig,"COL1A2pub_FibroVSMCs_Vlnplot_State.pdf",sep=""),width=3.7,height=3.5)
+```
+
+```{r featureplot}
+COL1A1_FibroVSMCs_Vlnplot_State<-VlnPlot2(Fibroblasts_VSMCs_object, features = "COL1A1", group.by = "class", show.mean = TRUE, mean_colors = c("black"), stat.method = "wilcox.test", p.adjust.method = "bonferroni", label = "p.signif", pt.size = 0.005, cols = c("#D3D0CB", "deepskyblue4", "maroon"))
+ggsave(COL1A1_FibroVSMCs_Vlnplot_State,file=paste(fig,"COL1A1_FibroVSMCs_Vlnplot_State.pdf",sep=""),width=3.5,height=3.5)
+COL1A1pub_FibroVSMCs_Vlnplot_State<-VlnPlot2(Fibroblasts_VSMCs_object, features = "COL1A1", group.by = "class", show.mean = TRUE, mean_colors = c("black"), pt.size = 0.005, cols = c("#D3D0CB", "deepskyblue4", "maroon"))
+ggsave(COL1A1pub_FibroVSMCs_Vlnplot_State,file=paste(fig,"COL1A1pub_FibroVSMCs_Vlnplot_State.pdf",sep=""),width=3.7,height=3.5)
+```
+
+```{r featureplot}
+PRKG1_FibroVSMCs_Vlnplot_State<-VlnPlot2(Fibroblasts_VSMCs_object, features = "PRKG1", group.by = "class", show.mean = TRUE, mean_colors = c("black"), stat.method = "wilcox.test", p.adjust.method = "bonferroni", label = "p.signif", pt.size = 0.02, cols = c("#D3D0CB", "deepskyblue4", "maroon"))
+ggsave(PRKG1_FibroVSMCs_Vlnplot_State,file=paste(fig,"PRKG1_FibroVSMCs_Vlnplot_State.pdf",sep=""),width=4,height=4)
+```
+
+
+
+```{r featureplot}
+COL3A1_FibroVSMCs_Vlnplot_State<-VlnPlot2(Fibroblasts_VSMCs_object, features = "COL3A1", group.by = "class", show.mean = TRUE, mean_colors = c("black"), stat.method = "wilcox.test", p.adjust.method = "bonferroni", label = "p.signif", pt.size = 0.02, cols = c("#D3D0CB", "deepskyblue4", "maroon"))
+ggsave(COL3A1_FibroVSMCs_Vlnplot_State,file=paste(fig,"COL3A1_FibroVSMCs_Vlnplot_State.png",sep=""),width=4,height=4)
+```
+
+```{r featureplot}
+COL5A2_FibroVSMCs_Vlnplot_State<-VlnPlot2(Fibroblasts_VSMCs_object, features = "COL5A2", group.by = "class", show.mean = TRUE, mean_colors = c("black"), stat.method = "wilcox.test", p.adjust.method = "bonferroni", label = "p.signif", pt.size = 0.02, cols = c("#D3D0CB", "deepskyblue4", "maroon"))
+ggsave(COL5A2_FibroVSMCs_Vlnplot_State,file=paste(fig,"COL5A2_FibroVSMCs_Vlnplot_State.png",sep=""),width=4,height=4)
+```
+
+```{r featureplot}
+COL8A1_FibroVSMCs_Vlnplot_State<-VlnPlot2(Fibroblasts_VSMCs_object, features = "COL8A1", group.by = "class", show.mean = TRUE, mean_colors = c("black"), stat.method = "wilcox.test", p.adjust.method = "bonferroni", label = "p.signif", pt.size = 0.02, cols = c("#D3D0CB", "deepskyblue4", "maroon"))
+ggsave(COL8A1_FibroVSMCs_Vlnplot_State,file=paste(fig,"COL8A1_FibroVSMCs_Vlnplot_State.png",sep=""),width=4,height=4)
+```
+
+```{r differentially ab.Fibroblasts}
+Fibroblasts_VSMCs_object$class <- paste(Fibroblasts_VSMCs_object$class)
+Idents(Fibroblasts_VSMCs_object) <- "class"
+VSMC_fibro.de <- FindMarkers(Fibroblasts_VSMCs_object, ident.1 = "mAAA", ident.2 = "NAA", verbose = FALSE)
+write.csv(VSMC_fibro.de, file = paste0(path1,"VSMC_fibro_NAAvsmAAA.csv"))
+```
+
+```{r}
+fun <- function(x) {
+  if (x == "Macrophages") {"Macrophages"} 
+  else if (x == "T_cells") {"T_cells"}
+  else if (x == "B_cells") {"B_cells"}
+  else if (x == "VSMCs") {"VSMC_Fibro"}
+  else if (x == "Endothelial_cells") {"Endothelial_cells"}
+  else if (x == "Plasma_cells") {"Plasma_cells"}
+  else if (x == "Fibroblasts") {"VSMC_Fibro"}
+  else if (x == "Neutrophils") {"Neutrophils"}
+}
+AAA_Ctrl_Merged$cell.type2 <- mapply(fun, AAA_Ctrl_Merged$cell.type)
+```
+
+```{r differentially ab.Fibroblasts}
+AAA_Ctrl_Merged$cell.type2.class <- paste(AAA_Ctrl_Merged$cell.type2, AAA_Ctrl_Merged$class, sep = "_")
+Idents(AAA_Ctrl_Merged) <- "cell.type2.class"
+VSMC_fibro.de <- FindMarkers(AAA_Ctrl_Merged, ident.1 = "VSMC_Fibro_NAA", ident.2 = "VSMC_Fibro_fAAA", verbose = FALSE)
+write.csv(VSMC_fibro.de, file = paste0(path1,"VSMC_fibro_NAAvsfAAA.csv"))
+```
+
+```{r differentially ab.Fibroblasts}
+AAA_Ctrl_Merged$cell.type2.class <- paste(AAA_Ctrl_Merged$cell.type2, AAA_Ctrl_Merged$class, sep = "_")
+Idents(AAA_Ctrl_Merged) <- "cell.type2.class"
+VSMC_fibro.de <- FindMarkers(AAA_Ctrl_Merged, ident.1 = "VSMC_Fibro_NAA", ident.2 = "VSMC_Fibro_mAAA", verbose = FALSE)
+write.csv(VSMC_fibro.de, file = paste0(path1,"VSMC_fibro_NAAvsmAAA.csv"))
+```
+
+```{r differentially ab.Fibroblasts}
+AAA_Ctrl_Merged$cell.type2.class <- paste(AAA_Ctrl_Merged$cell.type2, AAA_Ctrl_Merged$class, sep = "_")
+Idents(AAA_Ctrl_Merged) <- "cell.type2.class"
+VSMC_fibro.de <- FindMarkers(AAA_Ctrl_Merged, ident.1 = "VSMC_Fibro_mAAA", ident.2 = "VSMC_Fibro_fAAA", verbose = FALSE)
+write.csv(VSMC_fibro.de, file = paste0(path1,"VSMC_fibro_mAAAvsfAAA.csv"))
+```
+
+
+```{r Vln plot}
+Fibroblasts_VSMCs_object<- subset(AAA_Ctrl_Merged, subset = cell.type %in% c("Fibroblasts", "VSMCs"))
+COL1A1_FibroVSMCs_Vlnplot_State<-VlnPlot2(Fibroblasts_VSMCs_object, features = "COL1A1", group.by = "class", show.mean = TRUE, mean_colors = c("black"), stat.method = "wilcox.test", p.adjust.method = "bonferroni", label = "p.adj", pt.size = 0.02, cols = c("#D3D0CB", "deepskyblue4", "maroon")) 
+```
+
+```{subset VSMC+Fibroblasts and plan to subcluster the aggregate}
+vsmcFibro<-subset(AAA_Ctrl_Merged, subset = cell.type == c("Fibroblasts","VSMCs"))
+saveRDS(vsmcFibro, "vsmcFibro_subset_nodoub.rds")
+```
+
+```{r readobject}
+vsmcFibro<- readRDS("/storage1/fs1/zayedm/Active/Human_AAAs/R_Markdowns/vsmcFibro_subset_nodoub.rds")
+```
+
+```{r Clustering}
+vsmcFibro <- FindNeighbors(vsmcFibro, reduction = "pca", dims = 1:12)
+vsmcFibro <- FindClusters(vsmcFibro, resolution = c(0.1, 0.3, 0.5), verbose = FALSE)
+```
+
+```{r merge and name subsetted clusters}
+Idents(vsmcFibro) = "RNA_snn_res.0.1"
+vsmcFibro <- RenameIdents(vsmcFibro, '3' = "2")
+
+vsmcFibro$RNA_snn_res.0.1 <- factor(Idents(vsmcFibro), levels = c("0", "2", "1", "4"))
+```
+
+```{r Gene Ontology Analysis}
+library(clusterProfiler)
+library(org.Hs.eg.db)
+
+vsmcFibro.Markers <- FindAllMarkers(vsmcFibro, group.by = "RNA_snn_res.0.1", only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+
+###get each individual clusters markers
+Cluster0.markers <- vsmcFibro.Markers[vsmcFibro.Markers$cluster==0 & vsmcFibro.Markers$p_val_adj < 0.05, ]
+Cluster1.markers <- vsmcFibro.Markers[vsmcFibro.Markers$cluster==1 & vsmcFibro.Markers$p_val_adj < 0.05, ]
+Cluster2.markers <- vsmcFibro.Markers[vsmcFibro.Markers$cluster==2 & vsmcFibro.Markers$p_val_adj < 0.05, ]
+Cluster3.markers <- vsmcFibro.Markers[vsmcFibro.Markers$cluster==3 & vsmcFibro.Markers$p_val_adj < 0.05, ]
+
+###convert to different format
+Cluster0.genes <- bitr(Cluster0.markers$gene, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+Cluster1.genes <- bitr(Cluster1.markers$gene, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+Cluster2.genes <- bitr(Cluster2.markers$gene, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+Cluster3.genes <- bitr(Cluster3.markers$gene, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+
+cluster_lists <- split(vsmcFibro.Markers$gene, vsmcFibro.Markers$cluster)
+
+cluster_lists <- lapply(cluster_lists, function(genes) {
+  gene_ids <- bitr(genes, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+  return(gene_ids$ENTREZID)
+})
+
+
+###comparative analysis
+go_compare_bp <- compareCluster(geneCluster = cluster_lists, 
+    fun = "enrichGO", 
+    OrgDb = org.Hs.eg.db, 
+    ont = "BP",  # "BP", "MF" or "CC"
+    pAdjustMethod = "BH",
+    pvalueCutoff = 0.05,
+    qvalueCutoff = 0.05)
+
+
+GOPlot <- dotplot(go_compare_bp, showCategory = 4,
+              title = "VSMC and Fibroblast Subclustering")
+GOPlot + theme(axis.text.y = element_text(size = 7))
+
+ggsave(GOPlot,file=paste(fig,"CC_Updated_GO_VSMC_Fibro.pdf"),width =6,height = 8)
+
+
+```
+
+```{GO for just the fibroblasts}
+
+Fibroblasts.Markers <- FindAllMarkers(Fibroblasts_indexed, group.by = "RNA_snn_res.0.1", only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+
+###get each individual clusters markers
+FibroCluster2.markers <- Fibroblasts.Markers[Fibroblasts.Markers$cluster==2 & Fibroblasts.Markers$p_val_adj < 0.05, ]
+FibroCluster3.markers <- Fibroblasts.Markers[Fibroblasts.Markers$cluster==3 & Fibroblasts.Markers$p_val_adj < 0.05, ]
+
+###convert to different format
+FibroCluster2.genes <- bitr(FibroCluster2.markers$gene, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+FibroCluster3.genes <- bitr(FibroCluster3.markers$gene, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+
+Fcluster_lists <- split(Fibroblasts.Markers$gene, Fibroblasts.Markers$cluster)
+
+Fcluster_lists <- lapply(Fcluster_lists, function(genes) {
+  gene_ids <- bitr(genes, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+  return(gene_ids$ENTREZID)
+})
+
+
+###comparative analysis
+go_compare_bp <- compareCluster(geneCluster = Fcluster_lists, 
+    fun = "enrichGO", 
+    OrgDb = org.Hs.eg.db, 
+    ont = "BP",  # "BP", "MF" or "CC"
+    pAdjustMethod = "BH",
+    pvalueCutoff = 0.05,
+    qvalueCutoff = 0.05)
+
+
+GOPlot <- dotplot(go_compare_bp, showCategory = 6,
+              title = "Fibroblast Subclusters")
+GOPlot + theme(axis.text.y = element_text(size = 7))
+
+ggsave(GOPlot,file=paste(fig,"Fibro_subclusters.pdf"),width =6,height = 14)
+
+```
+
+```{visualize the VSMC/Fibro subclustering and do feature plots}
+vsmcFibro.umap <- DimPlot2(vsmcFibro, reduction = 'umap', group.by = 'cell.type2', pt.size = 0.5)
+ggsave(vsmcFibro.umap, file=paste(fig,"vsmcFibro_subclusters_all.pdf"),width =8,height = 6)
+vsmcFibro.umap_split <- DimPlot2(vsmcFibro, reduction = 'umap', group.by = 'cell.type2', split.by = 'class', pt.size = 0.5)
+ggsave(vsmcFibro.umap_split, file=paste(fig,"vsmcFibro_subclusters_all_split.pdf"), width =15,height = 5)
+       
+
+
+
+###Markers to keep track of
+###Cluster 0 - LYZ, AIF1, HLA-DPA1   ---> macrophage-like
+###Cluster 1 - ACTA2, CNN1, MYH11    --> contractile
+###Cluster 2 - FBLN2, PDGFRA, MMP2  --> FB1
+###Cluster 3 - FAP, COL1A2, CD44  --> FB2
+grouped_features<- list("Macrophage-like VSMC" = c("CCL3", "CCL4", "CCL2", "HLA-DRA", "HLA-DPA1"), "Contractile VSMCs" = c("ACTA2", "CNN1", "MYH11", "MYLK", "TINAGL1"), "Typical_Fibroblast" = c("FBLN2", "PDGFRA", "MMP2", "LAMA2", "LTBP4"), "Activated_Fibroblast" = c("FAP", "COL1A2", "THY1", "RUNX1", "SERPINE1"))
+#LAMA2 inhibits fibrosis, loss of it will cause fibrosis
+
+grouped_features <- list("Cluster 0" = c("LYZ", "CCL3", "IL8", "CCL4", "HLA-DRA"), "Cluster 1" = c("CYP4B1", "RBP4", "PTN", "GALNT15", "COL4A4"), "Cluster 2" = c("TBX2", "ITGA7", "ITGA8", "RCAN2", "RERGL"), "Cluster 3" = c("HAS1", "SFRP4", "COMP", "SERPINE1", "COL1A1", "COL3A1"))
+
+
+Dotplot_markers<-DotPlot2(vsmcFibro, features = grouped_features, group.by = "RNA_snn_res.0.1", flip = TRUE)
+ggsave(Dotplot_markers, file=paste(fig,"subcluster_dotplot_supp.pdf"),width =8,height = 3)
+
+FPlot <- FeaturePlot3(Fibroblasts_indexed, "PDGFRA", , "THY1", reduction = "umap", pt.size = 1)
+ggsave(FPlot, file=paste(fig, "contVSMC_Fibro2.pdf"))
+
+fun <- function(x) {
+  if (x == "0") {"Macrophage-like_VSMC"} 
+  else if (x == "1") {"Typical_Fibroblast"}
+  else if (x == "2") {"Contractile_VSMC"}
+  else if (x == "3") {"Contractile_VSMC"}
+  else if (x == "4") {"Activated_Fibroblast"}
+}
+saveRDS(vsmcFibro, 'vsmcFibro_split.rds')
+
+
+```
+```{vsmcFibro analysis}
+loadRDS(vsmcFibro, 'vsmcFibro_split.rds')
+#relative abundance of these clusters
+vsmcFibro$cell.type2 <- mapply(fun, vsmcFibro$RNA_snn_res.0.1)
+
+
+
+clusterDist <- ClusterDistrBar(vsmcFibro$class, vsmcFibro$cell.type2, cols = c("grey", "deepskyblue4", "maroon"), border = "black", normalize = TRUE, rev = TRUE)+ theme(axis.title.x = element_blank())
+
+clusterDist_Supp <- ClusterDistrBar(vsmcFibro$class, vsmcFibro$RNA_snn_res.0.1, border = "black", normalize = TRUE, rev = FALSE, flip = FALSE)+ theme(axis.title.x = element_blank())
+
+ggsave(clusterDist_Supp, file=paste(fig,"clusterBars_Supp4.pdf"), width = 4, height = 5.5)
+```
+
+
+```{DGE cluster 2 and 3}
+Idents(vsmcFibro) <- "RNA_snn_res.0.1"
+DGEMarkers <- FindMarkers(vsmcFibro, ident.1 = "2", ident.2 = "3")
+head(DGEMarkers)
+write.csv(DGEMarkers, file=paste(fig, "FibroDGE.csv"))
+```
+
+```{Morphogenesis Fibroblasts}
+circ_t<-scan(paste(path1,"Fibrosis_Markers.csv", sep = ""),what="character",sep=",")
+circ_h<-circ_t[c(which(circ_t %in% rownames(vsmcFibro)))]
+
+
+vsmcFibro <- AddModuleScore(object = vsmcFibro, features = list(circ_h), pool = NULL, ctrl = 100, nbin = 14, name = "fibrosis_score")
+
+pal <- viridis(n = 10, option = "C")
+
+FP_Score_morphogenesis<-FeaturePlot(vsmcFibro,
+                    features="fibrosis_score1",
+                    split.by ="class",
+                    order=TRUE,
+                    pt.size = 0.3)&theme(plot.title = element_text(size = 20),axis.text = element_text(size=20),axis.title = element_text(size=20))&xlab("UMAP 1")&ylab("UMAP 2")&scale_color_gradientn(colors=pal,limits=c(-0.5,1.8))
+
+ggsave(FP_Score_morphogenesis,file=paste(fig,"FP_Score_fibrosis_class.pdf",sep=""),width=14,height=5)
+
+
+FP_Score_morphogenesis_Vln<- VlnPlot2(vsmcFibro, features = "fibrosis_score1", group.by = "cell.type2", split.by = "class", stat.method = "t.test")
+
+ggsave(FP_Score_morphogenesis_Vln,file=paste(fig,"FP_Score_fibrosis_Vln.pdf",sep=""),width=9,height=5)
+```
+
+```{subset and plot genes among fibroblasts}
+Fibroblasts_indexed<-subset(vsmcFibro, subset = cell.type2 == c("Typical_Fibroblast", "Activated_Fibroblast"))
+
+Fibro2Indexed <- subset(vsmcFibro, subset = cell.type2 == c("Fibroblast_2"))
+
+Fibro_SASP <- VlnPlot2(Fibroblasts_indexed, features = c("VEGFA", "FAP", "RUNX1", "CCL2", "SERPINE1", "HIF1A"), group.by = "cell.type2", ncol = 3, nrow = 2, show.mean = TRUE, stat.method = "wilcox.test", p.adjust.method = "bonferroni", label = "p.signif")
+
+ggsave(Fibro_SASP, file=paste(fig,"Fibroblasts_SASP_genes.pdf",sep=""),width=8,height=5)
+```
+
+
+
+
+```{Paper Figures}
+Clusters <- DimPlot2(vsmcFibro, group.by = 'cell.type2')
+ClustersClass <- DimPlot2(vsmcFibro, group.by = 'cell.type2', split.by = 'class')
+ggsave(Clusters, file=paste(path2,"Clusters_nosplit.pdf",sep=""),width=10,height=6)
+ggsave(ClustersClass, file=paste(path2,"Clusters_split.pdf",sep=""),width=20,height=6)
+
+#relative Abundance
+
+clusterDist <- ClusterDistrBar(vsmcFibro$class, vsmcFibro$cell.type2, cols = c("grey", "deepskyblue4", "maroon"), border = "black", normalize = TRUE, rev = TRUE)+ theme(axis.title.x = element_blank())
+ggsave(clusterDist, file=paste(path2,"Clusters_distribution.pdf",sep=""),width=5,height=3)
+
+Fibro_SASP <- VlnPlot2(Fibroblasts_indexed, features = c("AEBP1", "FAP", "RUNX1", "CCL2", "THBS1", "COL1A1", "COMP", "THY1"), group.by = "cell.type2", cols = c("coral3", "mediumorchid4"), ncol = 4, nrow = 2, show.mean = TRUE, stat.method = "wilcox.test", p.adjust.method = "bonferroni", label = "p.signif")
+ggsave(Fibro_SASP, file = paste(fig,"Fibro_diffGenes.pdf", sep=""), width = 11, height = 5)
+```
+
+
+```{r Findmarkers}
+Allmarkers <- FindAllMarkers(object = vsmcFibro, group.by = "RNA_snn_res.0.1", only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+write.csv(Allmarkers, file = paste0(path2,"Allmarkers.csv"))
+```
+
+```{r Topmarkers}
+top_n_markers <- function(marker_table, n = 10) {marker_table %>% group_by(cluster) %>% top_n(n, avg_log2FC) %>% arrange(cluster, desc(avg_log2FC))}
+top10_markers <- top_n_markers(Allmarkers, 10)
+write.csv(top10_markers, file = paste0(path2,"Top_10_markers.csv"))
+```
+
+```{r Dotplot markers}
+grouped_features<- list("Cluster 0" = c("LYZ", "CCL3", "IL8", "CCL4", "HLA-DRA"), "Cluster 1" = c("TBX2", "ITGA7", "ITGA8", "RCAN2", "RERGL"), "Cluster 2" = c("CYP4B1", "RBP4", "PTN", "GALNT15", "COL4A4"), "Cluster 3" = c("HAS1", "SFRP4", "COMP", "SERPINE1", "COL1A1", "COL3A1"))
+Dotplot_markers<-DotPlot2(vsmcFibro, features = grouped_features, group.by = "RNA_snn_res.0.1", flip = TRUE)
+ggsave(Dotplot_markers,file=paste(fig,"Dotplot_markers.pdf"),width =10,height = 3)
+```
+
+```{r Visualization}
+UMAP_splitclass<-DimPlot2(vsmcFibro, split.by = "class", group.by = "RNA_snn_res.0.1", pt.size = 0.02)
+ggsave(UMAP_splitclass,file=paste(fig,"UMAP_split_class.pdf"),width =10,height = 4)
+UMAP_splitclass_celltype<-DimPlot2(AAA_Ctrl_Merged, group.by = "cell.type", split.by = "class")
+UMAP_gb_celltype<-DimPlot2(AAA_Ctrl_Merged, group.by = "cell.type", pt.size = 0.01, theme = NoAxes()) + theme_umap_arrows()
+ggsave(UMAP_gb_celltype,file=paste(fig,"UMAP_gb_celltype.pdf"),width =6,height = 4)
+UMAP_split_class<-DimPlot2(AAA_Ctrl_Merged, group.by = "cell.type", split.by = "class", pt.size = 0.01) 
+ggsave(UMAP_split_class,file=paste(fig,"UMAP_split_class.pdf"),width =15,height = 5)
+
+UMAP_everything<-DimPlot2(AAA_Ctrl_Merged, features = c("cell.type", "class", "ACTA2", "PDGFRA", "MMP2", "CCL2"))
+UMAP_FAP<-DimPlot2(AAA_Ctrl_Merged, features = "FAP", split.by = "class")
+UMAP_CCR2<-DimPlot2(AAA_Ctrl_Merged, features = "CCR2", split.by = "class")
+UMAP_CCL2<-DimPlot2(AAA_Ctrl_Merged, features = "CCL2", split.by = "class")
+ggsave(UMAP_splitclass,file=paste(fig,"UMAP_splitclass.png"),width =12,height = 6)
+ggsave(UMAP_splitclass_celltype,file=paste(fig,"UMAP_splitclass_celltype.png"),width =16,height = 6)
+ggsave(UMAP_gb_celltype,file=paste(fig,"UMAP_gb_celltype.png"),width =8,height = 6)
+```
+
+
+```{r Visualization}
+UMAP_gb_celltype<-DimPlot2(vsmcFibro, group.by = "RNA_snn_res.0.1", pt.size = 0.2, theme = NoAxes()) + theme_umap_arrows()
+ggsave(UMAP_gb_celltype,file=paste(fig,"UMAP_gb_celltype.png"),width =4,height = 4)
+```
+
+```{r Visualization}
+UMAP_gb_celltype2<-DimPlot2(vsmcFibro, group.by = "cell.type2", pt.size = 0.2, theme = NoAxes()) + theme_umap_arrows()
+ggsave(UMAP_gb_celltype2,file=paste(fig,"UMAP_gb_celltype2.pdf"),width =6,height = 4)
+```
+
+
+```{r Visualization}
+UMAP_gb_celltype<-DimPlot2(AAA_Ctrl_Merged, group.by = "RNA_snn_res.0.1", pt.size = 0.05)
+ggsave(UMAP_gb_celltype,file=paste(fig,"UMAP_gb_celltype.png"),width =8,height = 6)
+```
+
+```{r Visualization}
+UMAP_splitclass_celltype2<-DimPlot2(vsmcFibro, split.by = "class", group.by = "cell.type2", pt.size = 0.05)
+ggsave(UMAP_splitclass_celltype2,file=paste(fig,"UMAP_splitclass_celltype2.pdf"),width =12,height = 4)
+```
+
+```{r Distribution}
+Distribution_normalized_reversed<-ClusterDistrBar(vsmcFibro$class, vsmcFibro$RNA_snn_res.0.1, cols = c("#D3D0CB", "deepskyblue4", "maroon"), border = "black", normalize = TRUE, rev = TRUE)+ theme(axis.title.x = element_blank())
+ggsave(Distribution_normalized_reversed,file=paste(fig,"Distribution_normalized_reversed.pdf"),width =5.5,height = 3)
+```
+
+```{r Distribution}
+Distribution_normalized<-ClusterDistrBar(vsmcFibro$class, vsmcFibro$RNA_snn_res.0.1, border = "black", normalize = TRUE, rev = FALSE, flip = FALSE)+ theme(axis.title.x = element_blank())
+ggsave(Distribution_normalized,file=paste(fig,"Distribution_normalized.pdf"),width =4,height = 5)
+```
+
+```{r List}
+fun <- function(x) {
+  if (x == "0") {"Macrophage-like_VSMC"} 
+  else if (x == "1") {"Contractile_VSMC"}
+  else if (x == "2") {"Typical_Fibroblast"}
+  else if (x == "3") {"Activated_Fibroblast"}
+}
+#relative abundance of these clusters
+vsmcFibro$cell.type2 <- mapply(fun, vsmcFibro$RNA_snn_res.0.1)
+
+saveRDS(vsmcFibro, 'vsmcFibro_Split_nodoub.rds')
+```
+
+```{r load split vsmcFibro subcluster}
+vsmcFibro <- readRDS("/storage1/fs1/zayedm/Active/Human_AAAs/R_Markdowns/vsmcFibro_Split_nodoub.rds")
+```
+
+```{r distribution}
+clusterDist <- ClusterDistrBar(vsmcFibro$class, vsmcFibro$cell.type2, cols = c("grey", "deepskyblue4", "maroon"), border = "black", normalize = TRUE, rev = TRUE)+ theme(axis.title.x = element_blank())
+ggsave(clusterDist, file=paste(path2,"Clusters_distribution.pdf",sep=""),width=5,height=3)
+```
+
+
+
+```{test vsmcFibro Recluster}
+
+vsmcFibro <- NormalizeData(vsmcFibro, verbose = FALSE)
+vsmcFibro <- FindVariableFeatures(vsmcFibro, selection.method = "vst", nfeatures = 2000)
+head(VariableFeatures(vsmcFibro), 10)
+top10 <- head(VariableFeatures(vsmcFibro), 10)
+plot1 <- VariableFeaturePlot(vsmcFibro)
+plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
+ggsave(plot2,file=paste(fig,"Top10genes_Vftplot.pdf",sep=""),width=10,height=10)
+
+all.genes <- rownames(vsmcFibro)
+vsmcFibro <- ScaleData(vsmcFibro, features = all.genes)
+vsmcFibro <- RunPCA(vsmcFibro, npcs = 12, features = VariableFeatures(object = vsmcFibro))
+
+vsmcFibro <- RunUMAP(vsmcFibro, reduction = "pca", dims = 1:12,seed.use = 42)
+vsmcFibro <- RunTSNE(vsmcFibro, reduction = "pca", dims = 1:12)
+
+newMap <- DimPlot2(vsmcFibro, group.by = "RNA_snn_res.0.1", pt.size = 0.5)
+newMapSplit <-DimPlot2(vsmcFibro, split.by = 'class',  group.by = "RNA_snn_res.0.1", pt.size = 0.5)
+ggsave(newMap,file=paste(fig,"vsmcFibroSubsetNew_aggregate.pdf",sep=""),width=6,height=5)
+ggsave(newMapSplit,file=paste(fig,"vsmcFibroSubsetNew_aggregate_split.pdf",sep=""),width=10,height=4)
+
+
+###featureplot to correspond to dotplot
+fp1 <- FeaturePlot3(vsmcFibro, feature.1 = 'CCL3', feature.3 = 'FBLN2', pt.size = 0.1)
+fp2 <-  FeaturePlot3(vsmcFibro, feature.1 = 'ACTA2', feature.3 = 'FAP', pt.size = 0.1)
+ggsave(fp1,file=paste(fig,"Features_identify1.pdf",sep=""),width=6,height=6)
+ggsave(fp2,file=paste(fig,"Features_identify1.pdf",sep=""),width=6,height=6)
+
+
+
+
+
+```
+
